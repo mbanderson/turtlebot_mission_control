@@ -84,17 +84,17 @@ class Navigator:
             if astar.solve():
                 # If initial state == goal, path len == 1
                 # Handle case where A* solves, but no 2nd element -> don't send msg
-                if len(astar.path) < 2:
+                if len(astar.path) < 4:
                     rospy.loginfo("Path goal matches current state")
 
                 # Typical use case
                 else:
                     # Next waypoint calculations
-                    wp_x = astar.path[1][0]
-                    wp_y = astar.path[1][1]
+                    wp_x = astar.path[3][0]
+                    wp_y = astar.path[3][1]
 
                     # Far from goal - do intermediate heading calcs
-                    if len(astar.path) > 2:
+                    if len(astar.path) > 4:
                         dx = wp_x - robot_translation[0]
                         dy = wp_y - robot_translation[1]
                         wp_th = np.arctan2(dy,dx)
