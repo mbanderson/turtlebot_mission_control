@@ -41,6 +41,8 @@ class Controller:
 
         self.x_goal = [self.x_g, self.y_g, self.th_g]
 
+        self.STOP_THRESHOLD = 0.1
+
         # subscribt to another topic called /turtlebot_control/position_goal
         # to grab "self.callback_Position" of type
         rospy.Subscriber('/turtlebot_controller/position_goal',
@@ -99,7 +101,7 @@ class Controller:
         # print len()
 
         # Define Controller Gains
-        k1 = 0.8
+        k1 = 0.5
         k2 = 0.5
         k3 = 0.5
 
@@ -122,6 +124,12 @@ class Controller:
             rospy.loginfo("Position Mode")
             V = k1*rho*np.cos(alpha)
             om = k2*alpha + k1* np.sinc(alpha/np.pi)*np.cos(alpha) * (alpha + k3*delta)
+
+        # Check whether we're close to the goal, and override control inputs to force a stop
+        # at the target position
+        if rho < self.STOP_THRESHOLD:
+            V = 0
+            om = 0
 
          # Apply saturation limits
         V = np.sin(V)*min(0.5, np.abs(V))
