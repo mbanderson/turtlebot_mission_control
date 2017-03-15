@@ -80,11 +80,11 @@ class Navigator:
             rospy.loginfo("Computing navigation plan")
             if astar.solve():
                 # Next waypoint calculations
+                wp_x = astar.path[1][0]
+                wp_y = astar.path[1][1]
+
                 # Far from goal - do intermediate heading calcs
                 if len(astar.path) > 2:
-                    wp_x = astar.path[1][0]
-                    wp_y = astar.path[1][1]
-
                     dx = wp_x - robot_translation[0]
                     dy = wp_y - robot_translation[1]
                     wp_th = np.arctan2(dy,dx)
