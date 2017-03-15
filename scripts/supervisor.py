@@ -20,8 +20,17 @@ class Supervisor:
         rospy.init_node('turtlebot_supervisor', anonymous=True)
         self.trans_listener = tf.TransformListener()
         self.trans_broad = tf.TransformBroadcaster()
+        self.mission = []
+        self.goal_counter = 0 # increments to point at next tag in mission
+        self.state = 'EXPLORE'
+        self.click_goal = Float32MultiArray() # stores goal for manual exploration
+        self.goal = Float32MultiArray() # waypoint coordinates in world frame
+        self.has_tags = False # True if agent know locations of all tags in mission
 
         rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)    # rviz "2D Nav Goal"
+        rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
+
+        self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=None)
 
         self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
         self.waypoint_offset = PoseStamped()
@@ -32,8 +41,11 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.z = quat[2]
         self.waypoint_offset.pose.orientation.w = quat[3]
 
+    def mission_callback(self, msg): # mission callback
+        self.mission = msg.data
+
     def rviz_goal_callback(self, msg):
-        pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
+        self.click_goal.data = pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
         # this callback does nothing... yet!
 
     def update_waypoints(self):
@@ -48,8 +60,31 @@ class Supervisor:
         rate = rospy.Rate(1) # 1 Hz, change this to whatever you like
         while not rospy.is_shutdown():
             self.update_waypoints()
+            self.has_tags = True
+            for id in self.mission:
+                if not self.waypoint_locations.has_key(id):
+                    self.has_tags = False
 
-            # FILL ME IN!
+            # STATE MACHINE
+            if self.state == 'EXPLORE':
+                if self.click_goal.data:
+                   self.goal_pub.publish(self.click_goal) # for manual exploration
+
+                if self.mission and self.has_tags:
+                    self.state == 'EXECUTE_MISSION'
+                else:
+                    self.state = 'EXPLORE'
+
+            if self.state == 'EXECUTE_MISSION':
+                goal_id = self.mission[self.goal_counter] # id of goal tag
+                self.goal = pose_to_xyth(self.waypoint_locations[goal_id])
+                self.goal_pub.publish(self.goal)
+                if self.mission and self.has_tags:
+                    self.state == 'EXECUTE_MISSION'
+                else:
+                    self.state = 'EXPLORE'
+
+            rospy.loginfo(self.state)
 
             rate.sleep()
 
