@@ -22,7 +22,7 @@ class Supervisor:
         self.trans_broad = tf.TransformBroadcaster()
         self.mission = []
         self.goal_counter = 0 # increments to point at next tag in mission
-        self.state = 'EXPLORE'
+        self.state = 'INIT'
         self.click_goal = Float32MultiArray() # stores goal for manual exploration
         self.goal = Float32MultiArray() # waypoint coordinates in world frame
         self.has_tags = False # True if agent know locations of all tags in mission
@@ -30,7 +30,7 @@ class Supervisor:
         rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)    # rviz "2D Nav Goal"
         rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
 
-        self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=None)
+        self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=1)
 
         self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
         self.waypoint_offset = PoseStamped()
@@ -57,7 +57,7 @@ class Supervisor:
                 pass
 
     def run(self):
-        rate = rospy.Rate(1) # 1 Hz, change this to whatever you like
+        rate = rospy.Rate(10) # 1 Hz, change this to whatever you like
         while not rospy.is_shutdown():
             self.update_waypoints()
             self.has_tags = True
@@ -66,6 +66,9 @@ class Supervisor:
                     self.has_tags = False
 
             # STATE MACHINE
+            if self.state == 'INIT':
+                self.state = 'EXPLORE'
+
             if self.state == 'EXPLORE':
                 if self.click_goal.data:
                    self.goal_pub.publish(self.click_goal) # for manual exploration
