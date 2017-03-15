@@ -30,6 +30,7 @@ class Navigator:
         rospy.Subscriber("map_metadata", MapMetaData, self.map_md_callback)
         rospy.Subscriber("/turtlebot_controller/nav_goal", Float32MultiArray, self.nav_sp_callback)
 
+        self.pose_sp_pub = rospy.Publisher('/turtlebot_controller/position_goal', Float32MultiArray, queue_size=10)
         self.nav_path_pub = rospy.Publisher('/turtlebot_controller/path_goal', Path, queue_size=10)
 
     def map_md_callback(self,msg):
@@ -75,6 +76,13 @@ class Navigator:
 
             rospy.loginfo("Computing navigation plan")
             if astar.solve():
+                # Publish next waypoint
+                pose_sp = (astar.path[1][0],astar.path[1][1],self.nav_sp[2])
+                msg = Float32MultiArray()
+                msg.data = pose_sp
+                self.pose_sp_pub.publish(msg)
+
+                # Publish full path
                 path_msg = Path()
                 path_msg.header.frame_id = 'map'
                 for state in astar.path:
