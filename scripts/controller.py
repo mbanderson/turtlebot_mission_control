@@ -13,20 +13,21 @@ from nav_msgs.msg import Path
 
 
 def wrapToPi(a):
-    # isinstance(object, classinfo) Return true if the object argument is an instance of the classinfo argument,
+    # isinstance(object, classinfo) Return true if the object argument is an
+    # instance of the classinfo argument,
     if isinstance(a, list):    # backwards compatibility for lists (distinct from np.array)
-        return [(x + np.pi) % (2*np.pi) - np.pi for x in a]
-    return (a + np.pi) % (2*np.pi) - np.pi
+        return [(x + np.pi) % (2 * np.pi) - np.pi for x in a]
+    return (a + np.pi) % (2 * np.pi) - np.pi
 
 
 class Controller:
 
     def __init__(self):
         rospy.init_node('turtlebot_controller', anonymous=True)
-        # rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback)
         self.trans_listener = tf.TransformListener()
 
-        self.pub = rospy.Publisher('cmd_vel_mux/input/navi', Twist, queue_size=10)
+        self.pub = rospy.Publisher(
+            'cmd_vel_mux/input/navi', Twist, queue_size=10)
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0
@@ -42,63 +43,53 @@ class Controller:
 
         # subscribt to another topic called /turtlebot_control/position_goal
         # to grab "self.callback_Position" of type
-        rospy.Subscriber('/turtlebot_controller/position_goal', Float32MultiArray, self.callback_Position)
+        rospy.Subscriber('/turtlebot_controller/position_goal',
+                         Float32MultiArray, self.callback_Position)
+        rospy.Subscriber('/turtlebot_controller/path_goal',
+                         Path, self.callback_path_goal)
 
-        rospy.Subscriber('/turtlebot_controller/path_goal', Path, self.callback_path_goal)
+        rospy.Subscriber('/turtlebot_control/velocity_goal',
+                         Float32MultiArray, self.callback_Velocity)
+        rospy.Subscriber('/turtlebot_control/control_mode',
+                         UInt8, self.callback_Mode)
 
-        rospy.Subscriber('/turtlebot_control/velocity_goal', Float32MultiArray, self.callback_Velocity)
-        rospy.Subscriber('/turtlebot_control/control_mode', UInt8, self.callback_Mode)
-
-
-    def callback_path_goal(self, data): # it publishes the whole path 
+    def callback_path_goal(self, data):  # it publishes the whole path
         numPoints = len(data.poses)
-        print numPoints
-        # print data
-        # print data.poses[numPoints-1]
-        # print data.poses[numPoints-1].pose
-        # print data.poses[numPoints-1].pose.position
-    	self.x_goal =  [data.poses[numPoints-1].pose.position.x, data.poses[numPoints-1].pose.position.y]
+    	self.x_goal = [data.poses[numPoints - 1].pose.position.x,
+    	    data.poses[numPoints - 1].pose.position.y]
 
+    def callback_Position(self, data):  # Here we handle the logic of the state machine
 
-    def callback_Position(self, data): #Here we handle the logic of the state machine 
-
-        self.x_g = data.data[0] # assuming data from state machine is [x,y,th] 
+        self.x_g = data.data[0]  # assuming data from state machine is [x,y,th]
         self.y_g = data.data[1]
         self.th_g = data.data[2]
 
+    def callback_Velocity(self, data):  # Here we handle the logic of the state machine
 
-
-
-    def callback_Velocity(self, data): #Here we handle the logic of the state machine 
-
-        self.V = data.data[0] # assuming data from state machine is [x,y,th] 
+        self.V = data.data[0]  # assuming data from state machine is [x,y,th]
         self.om = data.data[1]
 
-    def callback_Mode(self, data): #Here we handle the logic of the state machine 
+    def callback_Mode(self, data):  # Here we handle the logic of the state machine
 
-        self.Mode = data.data # assuming data from state machine is [x,y,th] 
+        self.Mode = data.data  # assuming data from state machine is [x,y,th]
 
     def get_ctrl_output(self):
 
+        # get the location of the robot
         try:
-            (translation,rotation) = self.trans_listener.lookupTransform("/map", "base_footprint", rospy.Time(0))
+            (translation, rotation) = self.trans_listener.lookupTransform(
+                "/map", "base_footprint", rospy.Time(0))
             euler = tf.transformations.euler_from_quaternion(rotation)
             self.x = translation[0]
             self.y = translation[1]
-            self.theta = euler[2]
+            self.th = euler[2]
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            translation = (0,0,0)
-            rotation = (0,0,0,1)
+            translation = (0, 0, 0)
+            rotation = (0, 0, 0, 1)
             euler = tf.transformations.euler_from_quaternion(rotation)
             self.x = translation[0]
             self.y = translation[1]
-            self.theta = euler[2]
-
-
-
-        # rho = ((self.x_g-self.x)**2+(self.y_g-self.y)**2)**0.5 # Original control law
-
-        rho = np.linalg.norm(np.asarray(self.x_goal[0:2]) - np.asarray([self.x, self.y]))
+            self.th = euler[2]
 
         # rospy.loginfo(self.x_goal)
         # rospy.loginfo(self.x_g)
@@ -107,18 +98,20 @@ class Controller:
         # print rho
         # print len()
 
-        alpha_noPi = np.arctan2((self.y_g-self.y), (self.x_g-self.x)) - (self.theta)
-   
-        alpha = wrapToPi([alpha_noPi])[0] #adding + pi
-    
-        #delta = alpha + th-th_g 
-        delta_noPi = alpha + self.theta-self.th_g
-        #wrapeToPi creates an array and we're looking at the first element of it [0]
-        delta = wrapToPi([delta_noPi])[0] 
-        
+        # Define Controller Gains
         k1 = 0.8
         k2 = 0.5
         k3 = 0.5
+
+        # Distance to target point
+        # rho = np.sqrt((self.x - self.x_g)**2 + (self.y - self.y_g)**2) # Original control law
+
+        # Distance to final point in current path
+        rho = np.linalg.norm(np.asarray(self.x_goal[0:2]) - np.asarray([self.x, self.y]))
+
+        # Define relevant control parameters
+        alpha = wrapToPi(np.arctan2(self.y_g - self.y, self.x_g - self.x) - self.th)
+        delta = wrapToPi(alpha + self.th - self.th_g)
 
         #Define control inputs (V,om) - without saturation constraints
         if self.Mode == 0:       #'velocity_control'
@@ -130,12 +123,7 @@ class Controller:
             V = k1*rho*np.cos(alpha)
             om = k2*alpha + k1* np.sinc(alpha/np.pi)*np.cos(alpha) * (alpha + k3*delta)
 
-#    rho_dot   =-V*np.cos(alpha)
-#    alpha_dot = V*sin(alpha)/rho - om
-#    delta_dot = V*sin(alpha)/rho
-
-
-    # Apply saturation limits
+         # Apply saturation limits
         V = np.sin(V)*min(0.5, np.abs(V))
         om = np.sin(om)*min(1, np.abs(om))
 
