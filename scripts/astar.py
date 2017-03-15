@@ -2,8 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-import pdb
-
 # Represents a motion planning problem to be solved using A*
 class AStar(object):
     def __init__(self, statespace_lo, statespace_hi, x_init, x_goal, occupancy, resolution=1):
