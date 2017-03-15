@@ -1,6 +1,8 @@
 # turtlebot_mission_control
 
-Some bare-bones starter code for the AA274 project -- feel free to use all or none of it. Clone into your `~/catkin_ws` (perhaps "Fork" this repo first, using the button in the top right of this page, if you want to use github to develop this code as a group) and run
+Authors: Connor Anderson, Michael Anderson, Kyle Brown, and Hala Al-Khalil
+
+Run
 ```bash
 roslaunch turtlebot_mission_control mission.launch
 ```
