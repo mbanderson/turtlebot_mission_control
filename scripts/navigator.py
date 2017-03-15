@@ -76,8 +76,21 @@ class Navigator:
 
             rospy.loginfo("Computing navigation plan")
             if astar.solve():
+                # Next waypoint calculations
+                # Far from goal - do intermediate heading calcs
+                if len(astar.path) > 2:
+                    wp_x = astar.path[1][0]
+                    wp_y = astar.path[1][1]
+
+                    dx = wp_x - robot_translation[0]
+                    dy = wp_y - robot_translation[1]
+                    wp_th = np.arctan2(dy,dx)
+                # Next point on path is the goal - use final goal pose
+                else:
+                    wp_th = self.nav_sp[2]
+
                 # Publish next waypoint
-                pose_sp = (astar.path[1][0],astar.path[1][1],self.nav_sp[2])
+                pose_sp = (wp_x,wp_y,wp_th)
                 msg = Float32MultiArray()
                 msg.data = pose_sp
                 self.pose_sp_pub.publish(msg)
