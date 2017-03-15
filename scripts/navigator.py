@@ -11,6 +11,8 @@ from astar import AStar, DetOccupancyGrid2D, StochOccupancyGrid2D
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 
+import pdb
+
 
 class Navigator:
     def __init__(self):
@@ -71,8 +73,9 @@ class Navigator:
         if self.occupancy and self.has_robot_location and self.nav_sp:
             state_min = (-int(round(self.plan_horizon)), -int(round(self.plan_horizon)))
             state_max = (int(round(self.plan_horizon)), int(round(self.plan_horizon)))
-            x_init = (int(round(robot_translation[0])), int(round(robot_translation[1])))
-            x_goal = (int(round(self.nav_sp[0])), int(round(self.nav_sp[1])))
+            # Round initial, goal positions to grid resolution
+            x_init = round_pt_to_grid(robot_translation[:2], self.plan_resolution)
+            x_goal = round_pt_to_grid(self.nav_sp[:2], self.plan_resolution)
 
             astar = AStar(state_min, state_max, x_init, x_goal, self.occupancy,
                           self.plan_resolution)
@@ -121,6 +124,13 @@ class Navigator:
 
     def run(self):
         rospy.spin()
+
+
+def round_pt_to_grid(pt, grid_res):
+    """Rounds coordinate point to nearest grid coordinates"""
+    steps = 1 / grid_res
+    return tuple([round(coord*steps) / steps for coord in pt])
+
 
 if __name__ == '__main__':
     nav = Navigator()
