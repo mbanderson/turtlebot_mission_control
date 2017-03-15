@@ -79,35 +79,42 @@ class Navigator:
 
             rospy.loginfo("Computing navigation plan")
             if astar.solve():
-                # Next waypoint calculations
-                wp_x = astar.path[1][0]
-                wp_y = astar.path[1][1]
+                # If initial state == goal, path len == 1
+                # Handle case where A* solves, but no 2nd element -> don't send msg
+                if len(astar.path) < 2:
+                    rospy.loginfo("Path goal matches current state")
 
-                # Far from goal - do intermediate heading calcs
-                if len(astar.path) > 2:
-                    dx = wp_x - robot_translation[0]
-                    dy = wp_y - robot_translation[1]
-                    wp_th = np.arctan2(dy,dx)
-                # Next point on path is the goal - use final goal pose
+                # Typical use case
                 else:
-                    wp_th = self.nav_sp[2]
+                    # Next waypoint calculations
+                    wp_x = astar.path[1][0]
+                    wp_y = astar.path[1][1]
 
-                # Publish next waypoint
-                pose_sp = (wp_x,wp_y,wp_th)
-                msg = Float32MultiArray()
-                msg.data = pose_sp
-                self.pose_sp_pub.publish(msg)
+                    # Far from goal - do intermediate heading calcs
+                    if len(astar.path) > 2:
+                        dx = wp_x - robot_translation[0]
+                        dy = wp_y - robot_translation[1]
+                        wp_th = np.arctan2(dy,dx)
+                    # Next point on path is the goal - use final goal pose
+                    else:
+                        wp_th = self.nav_sp[2]
 
-                # Publish full path
-                path_msg = Path()
-                path_msg.header.frame_id = 'map'
-                for state in astar.path:
-                    pose_st = PoseStamped()
-                    pose_st.pose.position.x = state[0]
-                    pose_st.pose.position.y = state[1]
-                    pose_st.header.frame_id = 'map'
-                    path_msg.poses.append(pose_st)
-                self.nav_path_pub.publish(path_msg)
+                    # Publish next waypoint
+                    pose_sp = (wp_x,wp_y,wp_th)
+                    msg = Float32MultiArray()
+                    msg.data = pose_sp
+                    self.pose_sp_pub.publish(msg)
+
+                    # Publish full path
+                    path_msg = Path()
+                    path_msg.header.frame_id = 'map'
+                    for state in astar.path:
+                        pose_st = PoseStamped()
+                        pose_st.pose.position.x = state[0]
+                        pose_st.pose.position.y = state[1]
+                        pose_st.header.frame_id = 'map'
+                        path_msg.poses.append(pose_st)
+                    self.nav_path_pub.publish(path_msg)
 
             else:
                 rospy.logwarn("Could not find path")
