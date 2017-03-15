@@ -26,6 +26,9 @@ class Navigator:
         self.map_probs = []
         self.occupancy = None
 
+        self.nav_sp = None
+        self.trans_listener = tf.TransformListener()
+
         rospy.Subscriber("map", OccupancyGrid, self.map_callback)
         rospy.Subscriber("map_metadata", MapMetaData, self.map_md_callback)
         rospy.Subscriber("/turtlebot_controller/nav_goal", Float32MultiArray, self.nav_sp_callback)
