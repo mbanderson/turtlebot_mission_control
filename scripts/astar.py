@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
+import pdb
+
 # Represents a motion planning problem to be solved using A*
 class AStar(object):
     def __init__(self, statespace_lo, statespace_hi, x_init, x_goal, occupancy, resolution=1):
@@ -119,7 +121,7 @@ class AStar(object):
             x_current = self.find_best_f_score()
             if x_current == self.x_goal:
                 self.path = self.reconstruct_path()
-                return self.path
+                return True
             self.open_set.remove(x_current)
             self.closed_set.append(x_current)
             for x_neigh in self.get_neighbors(x_current):
