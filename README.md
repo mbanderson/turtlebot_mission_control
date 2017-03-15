@@ -10,3 +10,8 @@ to run the `supervisor.py`, `navigator.py`, and `controller.py` scripts. To simu
 ```bash
 rosrun turtlebot_mission_control mission_publisher.py
 ```
+
+To run Gazebo without the simulation window, run
+```bash
+roslaunch asl_turtlebot turtlebot_project_sim.launch gui:=false headless:=true
+```
