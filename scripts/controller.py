@@ -132,8 +132,8 @@ class Controller:
             om = 0
 
          # Apply saturation limits
-        V = np.sin(V)*min(0.5, np.abs(V))
-        om = np.sin(om)*min(1, np.abs(om))
+        V = np.sin(V)*min(0.3, np.abs(V))
+        om = np.sin(om)*min(0.8, np.abs(om))
 
         cmd_x_dot = V # forward velocity
         cmd_theta_dot = om
