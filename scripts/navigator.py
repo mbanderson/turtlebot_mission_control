@@ -92,7 +92,9 @@ class Navigator:
         # Report to explorer if it can move on to new task
         # (this does not interfere with manual exploration)
         if self.finished_waypoint(self.nav_sp[:2]):
-            self.explore_success_pub.publish(True)
+            success_msg = Float32MultiArray()
+            success_msg.data = True
+            self.explore_success_pub.publish(success_msg)
             return
 
         # Still moving toward previous goal
@@ -200,8 +202,9 @@ class Navigator:
 
                 # Tell the explorer the search waypoint not accessible
                 # (regardless if in autonomous mode)
-                self.explore_fail_pub.publish(self.nav_sp[:2])
-
+                fail_msg = Float32MultiArray()
+                fail_msg.data = self.nav_sp[:2]
+                self.explore_fail_pub.publish(fail_msg)
 
 
     def next_waypoint(self, astar):

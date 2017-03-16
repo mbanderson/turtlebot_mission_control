@@ -31,7 +31,8 @@ class Supervisor:
         rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
 
         self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=1)
-        self.explore_pub = rospy.Publisher('turtlebot_controller/explore_mode', Float32MultiArray, queue_size=10)
+        self.explore_pub = rospy.Publisher('turtlebot_controller/explore_mode', Float32MultiArray, queue_size=1)
+        self.explore_msg = Float32MultiArray()
 
         self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
         self.waypoint_offset = PoseStamped()
@@ -71,9 +72,8 @@ class Supervisor:
 
                 # FLAG
                 # Toggle me to command autonomous exploration
-                self.explore_pub.publish(Flags.AUTONOMOUS)
-
-
+                self.explore_msg.data = [int(Flags.AUTONOMOUS)]
+                self.explore_pub.publish(self.explore_msg)
 
             if self.state == 'EXPLORE':
                 if self.click_goal.data:

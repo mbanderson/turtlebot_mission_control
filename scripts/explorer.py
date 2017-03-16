@@ -32,6 +32,7 @@ class Explorer:
 
         # Last known explore flag
         self.explore_mode = Flags.MANUAL
+        self.explore_goal = Float32MultiArray()
 
         # Map status
         self.map_width = 0
@@ -40,6 +41,9 @@ class Explorer:
         self.map_origin = [0, 0]
         self.map_probs = []
         self.occupancy = None
+
+        # Fix: This is hardcoded to match navigator.py for now
+        self.plan_resolution = 0.25
 
         # Navigator couldn't find any path to these coordinates
         self.banned_coords = []
@@ -66,9 +70,12 @@ class Explorer:
 
 
     def explore_callback(self, msg):
+
+        rospy.loginfo("explore_callback")
+
         # Update knowledge of robot
         self.robot_state()
-        self.explore_mode = Flags(msg.data)
+        self.explore_mode = Flags(int(msg.data[0]))
 
         # Supervisor has control; do nothing
         if self.explore_mode == Flags.MANUAL:
@@ -77,6 +84,7 @@ class Explorer:
         # Plan where to explore
         elif self.explore_mode == Flags.AUTONOMOUS:
             if self.occupancy and self.has_robot_location:
+                rospy.loginfo("Looking for explore target")
                 self.explore_area()
 
     def explore_fail_callback(self, msg):
@@ -134,8 +142,10 @@ class Explorer:
         # Publish exploration coordinate to navigator
         # Assume final orientation same as robot's current
         robot_th = tf.transformations.euler_from_quaternion(self.robot_rotation)[2]
-        explore_goal = [explore_coord[0], explore_coord[1], robot_th]
-        self.goal_pub.publish(explore_goal)
+        self.explore_goal.data = [explore_coord[0], explore_coord[1], robot_th]
+        self.goal_pub.publish(self.explore_goal)
+
+        rospy.loginfo("calculating explore target")
         return
 
 
@@ -173,3 +183,11 @@ class Explorer:
             self.robot_rotation = (0, 0, 0, 1)
             self.has_robot_location = False
         return
+
+    def run(self):
+        rospy.spin()
+
+
+if __name__ == '__main__':
+    hero = Explorer()
+    hero.run()

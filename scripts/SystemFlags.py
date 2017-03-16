@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import IntEnum
 
 
-class Flags(Enum):
+class Flags(IntEnum):
     AUTONOMOUS = 1
     MANUAL = 2
