@@ -5,6 +5,7 @@ from std_msgs.msg import Int32MultiArray, Float32MultiArray, String
 from geometry_msgs.msg import PoseStamped
 import tf
 import numpy as np
+from SystemFlags import Flags
 
 def pose_to_xyth(pose):
     th = tf.transformations.euler_from_quaternion((pose.orientation.x,
@@ -30,6 +31,7 @@ class Supervisor:
         rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
 
         self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=1)
+        self.explore_pub = rospy.Publisher('turtlebot_controller/explore_mode', Float32MultiArray, queue_size=10)
 
         self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
         self.waypoint_offset = PoseStamped()
@@ -66,6 +68,12 @@ class Supervisor:
             # STATE MACHINE
             if self.state == 'INIT':
                 self.state = 'EXPLORE'
+
+                # FLAG
+                # Toggle me to command autonomous exploration
+                self.explore_pub.publish(Flags.AUTONOMOUS)
+
+
 
             if self.state == 'EXPLORE':
                 if self.click_goal.data:

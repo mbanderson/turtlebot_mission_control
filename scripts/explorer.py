@@ -10,12 +10,15 @@ from std_msgs.msg import Float32MultiArray
 from astar import AStar, DetOccupancyGrid2D, StochOccupancyGrid2D
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
+from SystemFlags import Flags
 
+"""
 from enum import Enum
 
 class Flags(Enum):
     AUTONOMOUS = 1
     MANUAL = 2
+"""
 
 
 class Explorer:
@@ -54,9 +57,12 @@ class Explorer:
         # Live map updates
         rospy.Subscriber("map", OccupancyGrid, self.map_callback)
         rospy.Subscriber("map_metadata", MapMetaData, self.map_md_callback)
+
+        # Listen to feedback from navigator
         rospy.Subscriber("/turtlebot_controller/explore_fail",
                          Float32MultiArray, self.explore_fail_callback)
-
+        rospy.Subscriber("/turtlebot_controller/explore_success",
+                         Float32MultiArray, self.explore_success_callback)
 
 
     def explore_callback(self, msg):
@@ -79,6 +85,14 @@ class Explorer:
 
         # Force explore replan to new coordinate
         self.explore_callback(self.explore_mode)
+        return
+
+    def explore_success_callback(self, msg):
+        success = msg.data
+
+        # Request new exploration target if in autonomous control
+        if success:
+            self.explore_callback(self.explore_mode)
         return
 
     def explore_area(self):

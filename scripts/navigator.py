@@ -54,6 +54,8 @@ class Navigator:
         # FLAG: ADD THIS TO ARCHITECTURE
         self.explore_fail_pub = rospy.Publisher('/turtlebot_controller/explore_fail',
                                                 Float32MultiArray, queue_size=10)
+        self.explore_success_pub = rospy.Publisher('/turtlebot_controller/explore_success',
+                                                   Float32MultiArray, queue_size=10)
 
 
     def map_md_callback(self,msg):
@@ -80,9 +82,17 @@ class Navigator:
         # Update our knowledge of robot (x,y,th)
         self.robot_state()
 
+
         # Goal has changed -> Replan
         if self.nav_sp != self.prev_nav_sp:
             self.send_pose_sp()
+            return
+
+        # Check if robot arrived at goal
+        # Report to explorer if it can move on to new task
+        # (this does not interfere with manual exploration)
+        if self.finished_waypoint(self.nav_sp[:2]):
+            self.explore_success_pub.publish(True)
             return
 
         # Still moving toward previous goal
