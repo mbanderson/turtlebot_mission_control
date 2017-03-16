@@ -25,7 +25,6 @@ class Supervisor:
         self.state = 'INIT'
         self.click_goal = Float32MultiArray() # stores goal for manual exploration
         self.goal = Float32MultiArray() # waypoint coordinates in world frame
-        self.has_tags = False # True if agent know locations of all tags in mission
 
         rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)    # rviz "2D Nav Goal"
         rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
@@ -42,13 +41,16 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.w = quat[3]
 
     def mission_callback(self, msg): # mission callback
-        self.mission = msg.data
+        if not self.mission:
+            self.mission = msg.data
 
     def rviz_goal_callback(self, msg):
+        # rospy.loginfo(msg)
         self.click_goal.data = pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
-        # this callback does nothing... yet!
 
     def update_waypoints(self):
+        if not self.mission:
+            rospy.logwarn('Supervisor has not received mission command. Is mission_publisher running?')
         for tag_number in self.mission:
             try:
                 self.waypoint_offset.header.frame_id = "/tag_{0}".format(tag_number)
@@ -60,10 +62,6 @@ class Supervisor:
         rate = rospy.Rate(10) # 1 Hz, change this to whatever you like
         while not rospy.is_shutdown():
             self.update_waypoints()
-            self.has_tags = True
-            for id in self.mission:
-                if not self.waypoint_locations.has_key(id):
-                    self.has_tags = False
 
             # STATE MACHINE
             if self.state == 'INIT':
@@ -73,21 +71,24 @@ class Supervisor:
                 if self.click_goal.data:
                    self.goal_pub.publish(self.click_goal) # for manual exploration
 
-                if self.mission and self.has_tags:
-                    self.state == 'EXECUTE_MISSION'
+                if self.mission and len(self.waypoint_locations) == len(set(self.mission)):
+                    self.state = 'EXECUTE_MISSION'
                 else:
                     self.state = 'EXPLORE'
 
             if self.state == 'EXECUTE_MISSION':
                 goal_id = self.mission[self.goal_counter] # id of goal tag
-                self.goal = pose_to_xyth(self.waypoint_locations[goal_id])
+                self.goal.data = pose_to_xyth(self.waypoint_locations[goal_id].pose)
                 self.goal_pub.publish(self.goal)
-                if self.mission and self.has_tags:
-                    self.state == 'EXECUTE_MISSION'
+                if self.mission and len(self.waypoint_locations) == len(set(self.mission)):
+                    self.state = 'EXECUTE_MISSION'
                 else:
                     self.state = 'EXPLORE'
+            
 
             rospy.loginfo(self.state)
+            rospy.loginfo(len(self.waypoint_locations)-len(set(self.mission)))
+            # rospy.loginfo(self.waypoint_locations)
 
             rate.sleep()
 
