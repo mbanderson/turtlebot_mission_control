@@ -80,6 +80,18 @@ class Supervisor:
                 goal_id = self.mission[self.goal_counter] # id of goal tag
                 self.goal.data = pose_to_xyth(self.waypoint_locations[goal_id].pose)
                 self.goal_pub.publish(self.goal)
+                # if close enough to goal
+                    # if facing goal
+                        # increment goal_counter --> will proceed to next goal
+                    # if not facing goal
+                        # turn until facing goal
+                # if not close enough to goal
+                    # if turtlebot is not moving
+                        # tell controller to go directly to goal
+                    # if turtlebot is still moving
+                        # pass
+
+
                 if self.mission and len(self.waypoint_locations) == len(set(self.mission)):
                     self.state = 'EXECUTE_MISSION'
                 else:
@@ -88,7 +100,6 @@ class Supervisor:
 
             rospy.loginfo(self.state)
             rospy.loginfo(len(self.waypoint_locations)-len(set(self.mission)))
-            # rospy.loginfo(self.waypoint_locations)
 
             rate.sleep()
 
