@@ -51,6 +51,11 @@ class Navigator:
         self.pose_sp_pub = rospy.Publisher('/turtlebot_controller/position_goal', Float32MultiArray, queue_size=10)
         self.nav_path_pub = rospy.Publisher('/turtlebot_controller/path_goal', Path, queue_size=10)
 
+        # FLAG: ADD THIS TO ARCHITECTURE
+        self.explore_fail_pub = rospy.Publisher('/turtlebot_controller/explore_fail',
+                                                Float32MultiArray, queue_size=10)
+
+
     def map_md_callback(self,msg):
         self.map_width = msg.width
         self.map_height = msg.height
@@ -182,6 +187,11 @@ class Navigator:
 
             else:
                 rospy.logwarn("Could not find path")
+
+                # Tell the explorer the search waypoint not accessible
+                # (regardless if in autonomous mode)
+                self.explore_fail_pub.publish(self.nav_sp[:2])
+
 
 
     def next_waypoint(self, astar):

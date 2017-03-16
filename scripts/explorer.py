@@ -27,6 +27,9 @@ class Explorer:
         self.goal_pub = rospy.Publisher('/turtlebot_controller/nav_goal',
                                         Float32MultiArray, queue_size=10)
 
+        # Last known explore flag
+        self.explore_mode = Flags.MANUAL
+
         # Map status
         self.map_width = 0
         self.map_height = 0
@@ -34,6 +37,9 @@ class Explorer:
         self.map_origin = [0, 0]
         self.map_probs = []
         self.occupancy = None
+
+        # Navigator couldn't find any path to these coordinates
+        self.banned_coords = []
 
         # Robot status
         self.has_robot_location = False
@@ -48,21 +54,79 @@ class Explorer:
         # Live map updates
         rospy.Subscriber("map", OccupancyGrid, self.map_callback)
         rospy.Subscriber("map_metadata", MapMetaData, self.map_md_callback)
+        rospy.Subscriber("/turtlebot_controller/explore_fail",
+                         Float32MultiArray, self.explore_fail_callback)
 
 
 
     def explore_callback(self, msg):
+        # Update knowledge of robot
+        self.robot_state()
+        self.explore_mode = Flags(msg.data)
+
         # Supervisor has control; do nothing
-        if Flags(msg.data) == Flags.MANUAL:
+        if self.explore_mode == Flags.MANUAL:
             return
 
         # Plan where to explore
-        elif Flags(msg.data) == Flags.AUTONOMOUS:
+        elif self.explore_mode == Flags.AUTONOMOUS:
             if self.occupancy and self.has_robot_location:
                 self.explore_area()
 
+    def explore_fail_callback(self, msg):
+        # Never try to explore this coordinate again, no path
+        self.banned_coords.append(msg.data)
+
+        # Force explore replan to new coordinate
+        self.explore_callback(self.explore_mode)
+        return
+
     def explore_area(self):
-        pass
+        # Note on grid shape: vectorized probs stored column-first
+        prob_grid = np.reshape(self.map_probs, (self.map_height, self.map_width))
+        prob_grid = np.flipud(prob_grid.T)
+
+        # Grab unknown areas
+        unseen_inds = np.where(prob_grid == -1)
+
+        # Find furthest unknown
+        furthest_dist = None
+        furthest_unseens = []
+        for i,j in zip(*unseen_inds):
+            x = (i * self.map_resolution) + self.map_origin[0]
+            y = (j * self.map_resolution) + self.map_origin[1]
+
+            # Avoid coordinates impossible to reach
+            if (x,y) in self.banned_coords:
+                continue
+
+            dist = self.distance_to_pt((x,y))
+            if furthest_dist is None or dist < furthest_dist:
+                furthest_dist = dist
+                furthest_unseens.append((x,y))
+
+        # Grab the furthest unknown
+        explore_coord = None
+        while explore_coord is None and len(furthest_unseens) > 0:
+            explore_coord = furthest_unseens.pop()
+
+        # Didn't find any unknowns but supervisor commanded exploration:
+        # pick a random coordinate
+        if explore_coord is None:
+            explore_coord = np.random.randint((-self.map_width,-self.map_height),
+                                              (self.map_width,self.map_height),
+                                              size=2)
+
+        # Publish exploration coordinate to navigator
+        # Assume final orientation same as robot's current
+        robot_th = tf.transformations.euler_from_quaternion(self.robot_rotation)[2]
+        explore_goal = [explore_coord[0], explore_coord[1], robot_th]
+        self.goal_pub.publish(explore_goal)
+        return
+
+
+    def distance_to_pt(self, x):
+        return np.linalg.norm(np.array(self.robot_translation[:2]) - np.array(x))
 
 
     def map_md_callback(self,msg):
