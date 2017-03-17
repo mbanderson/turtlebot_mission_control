@@ -22,6 +22,22 @@ class Flags(Enum):
     MANUAL = 2
 """
 
+"""
+!!!! This is the working center of mass system:
+
+from scipy import ndimage
+# ... make binary grid...
+# test = [...]
+
+# labels = ndimage.label(test)[0]
+# ndimage.measurements.center_of_mass(test, labels, [1,2,3,...])
+# the end array there calculates center of mass at EACH LABEL GROUP (group of 1's, group of 2's, ...)
+
+# To do in general:
+# ndimage.measurements.center_of_mass(test, labels, range(1,np.amax(labels)+1))
+
+"""
+
 
 class Explorer:
     def __init__(self):
