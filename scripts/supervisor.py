@@ -132,6 +132,7 @@ class Supervisor:
 
 
                         # Publish final success at end of mission
+                        rospy.logwarn('SUCCESS. Published end of mission.')
                         pub = rospy.Publisher('/success', Bool, queue_size=10)
                         msg = Bool()
                         msg.data = True
