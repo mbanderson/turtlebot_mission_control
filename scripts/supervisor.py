@@ -40,6 +40,8 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.z = quat[2]
         self.waypoint_offset.pose.orientation.w = quat[3]
 
+        self.DIST_THRESH = 0.6
+
     def mission_callback(self, msg): # mission callback
         if not self.mission:
             self.mission = msg.data
@@ -57,6 +59,21 @@ class Supervisor:
                 self.waypoint_locations[tag_number] = self.trans_listener.transformPose("/map", self.waypoint_offset)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 pass
+
+    def get_robot_state(self):
+        """Queries robot state from map."""
+        try:
+            (self.robot_translation,
+             self.robot_rotation) = self.trans_listener.lookupTransform("/map","/base_footprint",rospy.Time(0))
+            self.has_robot_location = True
+        except (tf.LookupException, tf.ConnectivityException,
+                tf.ExtrapolationException):
+            self.robot_translation = (0, 0, 0)
+            self.robot_rotation = (0, 0, 0, 1)
+            self.has_robot_location = False
+
+        theta = tf.transformations.euler_from_quaternion(self.robot_rotation)[2]
+        return [self.robot_translation[0], self.robot_translation[1] , theta]
 
     def run(self):
         rate = rospy.Rate(10) # 1 Hz, change this to whatever you like
@@ -80,6 +97,27 @@ class Supervisor:
                 goal_id = self.mission[self.goal_counter] # id of goal tag
                 self.goal.data = pose_to_xyth(self.waypoint_locations[goal_id].pose)
                 self.goal_pub.publish(self.goal)
+
+                # Extract current position of robot
+
+                currentPos = self.get_robot_state()
+                goalPos = pose_to_xyth(self.waypoint_locations[goal_id].pose)
+                rospy.logwarn('GoalPos is {}'.format(goalPos))
+                rospy.logwarn('currentPos is {}'.format(currentPos))
+                distToGoal = np.linalg.norm(np.asarray(goalPos[0:2]) - np.asarray(currentPos[0:2]))
+
+                # Check if we're close enough to goal
+                if distToGoal < self.DIST_THRESH:
+                    self.goal_counter += 1
+                    if self.goal_counter > len(self.mission)-1
+                        rospy.signal_shutdown('End of Mission. Shutting down supervisor.')
+  
+                rospy.logwarn('Current goal is {}'.format(self.goal_counter))
+
+                rospy.logwarn('Distance to goal is {}'.format(distToGoal))
+
+
+
                 # if close enough to goal
                     # if facing goal
                         # increment goal_counter --> will proceed to next goal
