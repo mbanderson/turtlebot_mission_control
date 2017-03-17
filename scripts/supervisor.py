@@ -16,6 +16,9 @@ def pose_to_xyth(pose):
 class MissionStates:
         INIT, EXPLORE, EXECUTE_MISSION, END_OF_MISSION = range(4)
 
+class ExploreStates:
+        MANUAL, AUTONOMOUS = range(2)
+
 class Supervisor:  
 
     def __init__(self):
@@ -31,11 +34,11 @@ class Supervisor:
         rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)    # rviz "2D Nav Goal"
         rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
 
-        self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=1)
+        self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=10)
         # self.vel_control_pub = rospy.Publisher('/turtlebot_control/velocity_goal',
         #                  Float32MultiArray, queue_size=1)
         self.mission_state_pub = rospy.Publisher('/turtlebot_control/mission_state',
-                         UInt8, queue_size=1)
+                         UInt8, queue_size=10)
 
         self.MissionStates = MissionStates()
         self.missionState = self.MissionStates.INIT
@@ -50,6 +53,15 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.w = quat[3]
 
         self.DIST_THRESH = 0.5 # Distance to fiducial tag required for turtlebot to progress to next waypoint
+
+
+        # For autonomous planning
+        self.explore_states = ExploreStates()
+
+        self.nav_mode = self.explore_states.MANUAL
+        self.mission_state = self.MissionStates.EXPLORE
+        self.nav_data = Float32MultiArray() # [Mission,Mode,x,y,th]
+
 
 
     def mission_callback(self, msg): # mission callback
@@ -90,6 +102,10 @@ class Supervisor:
         self.missionState = missionState
 
     def run(self):
+        # CHANGE ME based on exploration mode
+        self.nav_mode = self.explore_states.AUTONOMOUS
+
+
         rate = rospy.Rate(10) # 1 Hz, change this to whatever you like
         while not rospy.is_shutdown():
             self.update_waypoints()
@@ -100,9 +116,28 @@ class Supervisor:
                 self.state = 'EXPLORE'
 
             if self.state == 'EXPLORE':
+                self.mission_state = self.MissionStates.EXPLORE
+
                 self.publish_mission_state(self.MissionStates.EXPLORE)
                 if self.click_goal.data:
-                   self.goal_pub.publish(self.click_goal) # for manual exploration
+
+                    # Publish MISSION, MODE, X, Y, TH
+                    click_x, click_y, click_th = self.click_goal.data[:3]
+                    self.nav_data.data = [self.mission_state, self.nav_mode,
+                                     click_x, click_y, click_th]
+                    self.goal_pub.publish(self.nav_data)
+
+                    # FLAG
+                    #self.goal_pub.publish(self.click_goal) # for manual exploration
+                if self.nav_mode == self.explore_states.AUTONOMOUS:
+                    # No click goal but still want to explore autonomously
+
+                    junk_x, junk_y, junk_z = np.zeros(3)
+                    self.nav_data.data = [self.mission_state, self.nav_mode,
+                                          junk_x, junk_y, junk_z]
+                    self.goal_pub.publish(self.nav_data)
+
+
 
                 if self.mission and len(self.waypoint_locations) == len(set(self.mission)):
                     self.state = 'EXECUTE_MISSION'
@@ -110,10 +145,19 @@ class Supervisor:
                     self.state = 'EXPLORE'
 
             if self.state == 'EXECUTE_MISSION':
+                self.mission_state = self.MissionStates.EXECUTE_MISSION
+
                 self.publish_mission_state(self.MissionStates.EXECUTE_MISSION)
                 goal_id = self.mission[self.goal_counter] # id of goal tag
                 self.goal.data = pose_to_xyth(self.waypoint_locations[goal_id].pose)
-                self.goal_pub.publish(self.goal)
+
+                # FLAG
+                #self.goal_pub.publish(self.goal)
+                goal_x, goal_y, goal_th = self.goal.data[:3]
+                self.nav_data.data = [self.mission_state, self.nav_mode,
+                                 goal_x, goal_y, goal_th]
+                self.goal_pub.publish(self.nav_data)
+
 
                 currentPos = self.get_robot_state() # Extract current position of robot
                 goalPos = pose_to_xyth(self.waypoint_locations[goal_id].pose)

@@ -10,8 +10,18 @@ from std_msgs.msg import Float32MultiArray
 from astar import AStar, DetOccupancyGrid2D, StochOccupancyGrid2D
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
+from scipy import ndimage
+
 
 import pdb
+
+
+# don't judge me - low on time and need to hardcode states across files
+class MissionStates:
+    INIT, EXPLORE, EXECUTE_MISSION, END_OF_MISSION = range(4)
+
+class ExploreStates:
+    MANUAL, AUTONOMOUS = range(2)
 
 
 class Navigator:
@@ -51,6 +61,15 @@ class Navigator:
         self.pose_sp_pub = rospy.Publisher('/turtlebot_controller/position_goal', Float32MultiArray, queue_size=10)
         self.nav_path_pub = rospy.Publisher('/turtlebot_controller/path_goal', Path, queue_size=10)
 
+
+        self.mission_states = MissionStates()
+        self.nav_modes = ExploreStates()
+
+        self.mission_mode = self.mission_states.EXPLORE
+        self.nav_mode = self.nav_modes.MANUAL
+        self.explore_goal = None
+
+
     def map_md_callback(self,msg):
         self.map_width = msg.width
         self.map_height = msg.height
@@ -68,12 +87,101 @@ class Navigator:
                                                   int(self.plan_resolution / self.map_resolution) * 2,
                                                   self.map_probs)
 
+
+    def plan_explore_goal(self):
+        if self.occupancy and self.has_robot_location:
+            mapArray = np.reshape(self.occupancy.probs, (self.occupancy.height, self.occupancy.width))
+            mapArray[mapArray > -1] = 0
+            mapArray[mapArray <= -1] = 1
+
+            labels = ndimage.label(mapArray)[0]
+            groups = range(1,np.amax(labels)+1)
+            centers = ndimage.measurements.center_of_mass(mapArray, labels, groups)
+
+            target_inds = None
+            while target_inds is None and len(centers) > 0:
+                target_inds = centers.pop(0)
+                target_inds = [np.fix(x) for x in target_inds]
+            if target_inds is None:
+                target_inds = np.random.randint((-self.occupancy.height,-self.occupancy.width),
+                                                (self.occupancy.height,self.occupancy.width),2)
+
+            # convert target inds to actual (x,y) location
+            # indexing is funny here to reflect grid vectorized first in y-direction (but origin matches expectations)
+            #y = (target_inds[0] * self.occupancy.resolution) + self.map_origin[1]
+            #x = (target_inds[1] * self.occupancy.resolution) + self.map_origin[0]
+            y = (target_inds[0] *.25) + self.map_origin[1]
+            x = (target_inds[1] *.25) + self.map_origin[0]
+
+
+            #pdb.set_trace()
+            #rospy.logwarn('Goal is {}'.format((x,y)))
+
+            self.explore_goal = [x,y]
+
+            # publish it
+            self.nav_sp = [x, y, 0]
+            self.send_pose_sp()
+        return
+
+
+
     def nav_sp_callback(self,msg):
         # Unpack commanded goal
-        self.nav_sp = (msg.data[0],msg.data[1],msg.data[2])
+        self.mission_mode = msg.data[0]
+        self.nav_mode = msg.data[1]
+        self.nav_sp = (msg.data[2], msg.data[3], msg.data[4])
+        #self.nav_sp = (msg.data[0],msg.data[1],msg.data[2])
 
         # Update our knowledge of robot (x,y,th)
         self.robot_state()
+
+        # Explore
+        # If manual, obey click goal
+        # If autonomous, click goal is junk
+        if self.mission_mode == self.mission_states.EXPLORE:
+            if self.nav_mode == self.nav_modes.MANUAL:
+                pass
+            elif self.nav_mode == self.nav_modes.AUTONOMOUS:
+                # Click goal was junk, now we must plan
+                # If we already planned before this iteration and not at goal, keep going
+                if self.prev_astar:
+                    # No walls in way yet...
+                    if self.prev_astar.is_free(self.explore_goal):
+                        # Not at explore goal -> keep going
+                        dist = np.linalg.norm(np.array(self.robot_translation[:2]) - np.array(self.explore_goal))
+                        if dist > self.wp_complete_thresh:
+                            pass
+                        # Finished goal -> stop
+                        else:
+                            # REPLAN
+                            self.prev_astar = None
+                            self.plan_explore_goal()
+                            return
+                    # Wall entered the picture... replan
+                    else:
+                        # Replan
+                        self.prev_astar = None
+                        self.plan_explore_goal()
+                        return
+
+                # No existing path
+                else:
+                    # REPLAN
+                    self.prev_astar = None
+                    self.plan_explore_goal()
+                    return
+
+
+        # Execute - supervisor has control - same as before
+        elif self.mission_mode == self.mission_states.EXECUTE_MISSION:
+            pass
+
+        # Not explore or execute - what are you doing here?
+        else:
+            rospy.logwarn("should not reach this")
+            return
+
 
         # Goal has changed -> Replan
         if self.nav_sp != self.prev_nav_sp:
@@ -157,6 +265,8 @@ class Navigator:
 
 
     def send_pose_sp(self):
+
+
 
         if self.occupancy and self.has_robot_location and self.nav_sp:
             state_min = (-int(round(self.plan_horizon)), -int(round(self.plan_horizon)))
