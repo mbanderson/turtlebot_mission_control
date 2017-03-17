@@ -9,6 +9,7 @@ import tf
 import numpy as np
 from std_msgs.msg import Float32MultiArray, UInt8
 from nav_msgs.msg import Path
+import supervisor as supervisor
 # from std_msgs.msg import uint8
 
 
@@ -41,19 +42,26 @@ class Controller:
 
         self.x_goal = [self.x_g, self.y_g, self.th_g]
 
-        self.STOP_THRESHOLD = 0.1
+        self.STOP_THRESHOLD = 0.3
+
+        self.MissionStates = supervisor.MissionStates()
+
+        self.missionState = self.MissionStates.INIT
 
         # subscribt to another topic called /turtlebot_control/position_goal
         # to grab "self.callback_Position" of type
-        rospy.Subscriber('/turtlebot_controller/position_goal',
-                         Float32MultiArray, self.callback_Position)
-        rospy.Subscriber('/turtlebot_controller/path_goal',
-                         Path, self.callback_path_goal)
+        rospy.Subscriber('/turtlebot_controller/position_goal',Float32MultiArray, self.callback_Position)
+        rospy.Subscriber('/turtlebot_controller/path_goal', Path, self.callback_path_goal)
 
         rospy.Subscriber('/turtlebot_control/velocity_goal',
                          Float32MultiArray, self.callback_Velocity)
-        rospy.Subscriber('/turtlebot_control/control_mode',
-                         UInt8, self.callback_Mode)
+        rospy.Subscriber('/turtlebot_control/control_mode',UInt8, self.callback_Mode)
+
+        rospy.Subscriber('/turtlebot_control/mission_state', UInt8, self.callback_mission_state)
+
+    def callback_mission_state(self, data):  # it publishes the whole path
+        self.missionState = data.data
+
 
     def callback_path_goal(self, data):  # it publishes the whole path
         numPoints = len(data.poses)
@@ -67,7 +75,6 @@ class Controller:
         self.th_g = data.data[2]
 
     def callback_Velocity(self, data):  # Here we handle the logic of the state machine
-
         self.V = data.data[0]  # assuming data from state machine is [x,y,th]
         self.om = data.data[1]
 
@@ -100,6 +107,7 @@ class Controller:
         # print rho
         # print len()
 
+
         # Define Controller Gains
         k1 = 0.5
         k2 = 0.5
@@ -127,7 +135,11 @@ class Controller:
 
         # Check whether we're close to the goal, and override control inputs to force a stop
         # at the target position
-        if rho < self.STOP_THRESHOLD:
+        rospy.logwarn('Mission State is {}'.format(self.missionState))
+        if rho < self.STOP_THRESHOLD or self.missionState == self.MissionStates.END_OF_MISSION:
+            rospy.logwarn('Stopping Robot')
+            if self.missionState == self.MissionStates.END_OF_MISSION:
+                rospy.signal_shutdown('End of Mission. Shutting down controller.')
             V = 0
             om = 0
 
@@ -141,7 +153,6 @@ class Controller:
         cmd = Twist()
         cmd.linear.x = cmd_x_dot
         cmd.angular.z = cmd_theta_dot
-
 
         return cmd
 
