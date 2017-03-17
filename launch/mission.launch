@@ -1,4 +1,5 @@
 <launch>
+    <node pkg="turtlebot_mission_control" type="mission_publisher.py" name="mission_publisher"/>
     <node pkg="turtlebot_mission_control" type="controller.py" name="turtlebot_controller"/>
     <node pkg="turtlebot_mission_control" type="supervisor.py" name="turtlebot_supervisor"/>
     <node pkg="turtlebot_mission_control" type="navigator.py" name="turtlebot_navigator"/>

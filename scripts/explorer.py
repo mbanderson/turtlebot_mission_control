@@ -12,6 +12,8 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from SystemFlags import Flags
 
+
+import pdb
 """
 from enum import Enum
 
@@ -32,6 +34,7 @@ class Explorer:
 
         # Last known explore flag
         self.explore_mode = Flags.MANUAL
+        self.goal = None
         self.explore_goal = Float32MultiArray()
 
         # Map status
@@ -84,14 +87,20 @@ class Explorer:
         # Plan where to explore
         elif self.explore_mode == Flags.AUTONOMOUS:
             if self.occupancy and self.has_robot_location:
-                rospy.loginfo("Looking for explore target")
-                self.explore_area()
+                if self.goal is None:
+                    rospy.loginfo("Looking for explore target")
+                    self.explore_area()
+                else:
+                    # Try to abandon existing path?
+                    self.explore_goal.data = self.goal
+                    self.goal_pub.publish(self.explore_goal)
 
     def explore_fail_callback(self, msg):
         # Never try to explore this coordinate again, no path
         self.banned_coords.append(msg.data)
 
         # Force explore replan to new coordinate
+        self.goal = None
         self.explore_callback(self.explore_mode)
         return
 
@@ -100,6 +109,8 @@ class Explorer:
 
         # Request new exploration target if in autonomous control
         if success:
+            # Reset existing goal
+            self.goal = None
             self.explore_callback(self.explore_mode)
         return
 
@@ -123,7 +134,7 @@ class Explorer:
                 continue
 
             dist = self.distance_to_pt((x,y))
-            if furthest_dist is None or dist < furthest_dist:
+            if furthest_dist is None or dist > furthest_dist:
                 furthest_dist = dist
                 furthest_unseens.append((x,y))
 
@@ -142,10 +153,14 @@ class Explorer:
         # Publish exploration coordinate to navigator
         # Assume final orientation same as robot's current
         robot_th = tf.transformations.euler_from_quaternion(self.robot_rotation)[2]
-        self.explore_goal.data = [explore_coord[0], explore_coord[1], robot_th]
+        self.goal = [explore_coord[0], explore_coord[1], robot_th]
+        self.explore_goal.data = self.goal
         self.goal_pub.publish(self.explore_goal)
 
+        #pdb.set_trace()
         rospy.loginfo("calculating explore target")
+
+
         return
 
 

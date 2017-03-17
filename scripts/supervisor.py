@@ -72,12 +72,15 @@ class Supervisor:
 
                 # FLAG
                 # Toggle me to command autonomous exploration
+                #self.explore_msg.data = [int(Flags.AUTONOMOUS)]
+                #self.explore_pub.publish(self.explore_msg)
+
+            if self.state == 'EXPLORE':
                 self.explore_msg.data = [int(Flags.AUTONOMOUS)]
                 self.explore_pub.publish(self.explore_msg)
 
-            if self.state == 'EXPLORE':
-                if self.click_goal.data:
-                   self.goal_pub.publish(self.click_goal) # for manual exploration
+                #if self.click_goal.data:
+                #   self.goal_pub.publish(self.click_goal) # for manual exploration
 
                 if self.mission and len(self.waypoint_locations) == len(set(self.mission)):
                     self.state = 'EXECUTE_MISSION'
