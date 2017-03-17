@@ -6,6 +6,8 @@ from geometry_msgs.msg import PoseStamped
 import tf
 import numpy as np
 
+from std_msgs.msg import Bool
+
 def pose_to_xyth(pose):
     th = tf.transformations.euler_from_quaternion((pose.orientation.x,
                                                    pose.orientation.y,
@@ -127,6 +129,15 @@ class Supervisor:
                         # Publish final mission state update
                         self.publish_mission_state(self.MissionStates.END_OF_MISSION)
                         self.state = "END_OF_MISSION"
+
+
+                        # Publish final success at end of mission
+                        pub = rospy.Publisher('/success', Bool, queue_size=10)
+                        msg = Bool()
+                        msg.data = True
+                        pub.publish(msg)
+
+
                         rospy.signal_shutdown('End of Mission. Shutting down supervisor.')
   
                 rospy.logwarn('Current goal is {}'.format(self.goal_counter))
