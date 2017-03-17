@@ -167,6 +167,10 @@ class Navigator:
 
             astar = AStar(state_min, state_max, x_init, x_goal, self.occupancy,
                           self.plan_resolution)
+            
+            # uncomment to add buffering to obstacles
+            #bufferRadius = 5
+            #astar.bufferOccupancy(bufferRadius)
 
             rospy.loginfo("Computing new navigation plan")
             if astar.solve():
