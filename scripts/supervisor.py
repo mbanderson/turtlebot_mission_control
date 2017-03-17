@@ -109,7 +109,7 @@ class Supervisor:
                 # Check if we're close enough to goal
                 if distToGoal < self.DIST_THRESH:
                     self.goal_counter += 1
-                    if self.goal_counter > len(self.mission)-1
+                    if self.goal_counter > (len(self.mission)-1):
                         rospy.signal_shutdown('End of Mission. Shutting down supervisor.')
   
                 rospy.logwarn('Current goal is {}'.format(self.goal_counter))
