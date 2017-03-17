@@ -137,6 +137,23 @@ class AStar(object):
                 self.f_score[x_neigh] = tent_g_score + self.distance(x_neigh, self.x_goal)
         return False
 
+    def bufferOccupancy(self,bufferRadius):
+        mapLength = len(self.map_probs)
+        mapArray = np.reshape(self.map_probs, (self.map_height, self.map_width))
+
+        # build circular buffer mask
+        bufferMask = np.zeros([1+2*bufferRadius,1+2*bufferRadius])
+        for i in range(bufferMask.shape[0]):
+            for j in range(bufferMask.shape[1]):
+                if (i-bufferRadius)**2 + (j-bufferRadius)**2 <= bufferRadius**2:
+                    bufferMask[i][j] = 1
+
+        # convolve
+        convolvedMap = signal.convolve2d(mapArray,bufferMask,mode='same')
+        mapArray[convolvedMap > 0] = 100
+
+        # update map
+        self.map_probs = np.reshape(mapArray, (length,))
 
 # A 2D state space grid with a set of rectangular obstacles. The grid is fully deterministic
 class DetOccupancyGrid2D(object):
