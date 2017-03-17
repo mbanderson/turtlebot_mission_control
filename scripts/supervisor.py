@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from std_msgs.msg import Int32MultiArray, Float32MultiArray, String
+from std_msgs.msg import Int32MultiArray, Float32MultiArray, String, UInt8
 from geometry_msgs.msg import PoseStamped
 import tf
 import numpy as np
@@ -13,8 +13,10 @@ def pose_to_xyth(pose):
                                                    pose.orientation.w))[2]
     return [pose.position.x, pose.position.y, th]
 
+class MissionStates:
+        INIT, EXPLORE, EXECUTE_MISSION, END_OF_MISSION = range(4)
 
-class Supervisor:
+class Supervisor:  
 
     def __init__(self):
         rospy.init_node('turtlebot_supervisor', anonymous=True)
@@ -30,6 +32,13 @@ class Supervisor:
         rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
 
         self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=1)
+        # self.vel_control_pub = rospy.Publisher('/turtlebot_control/velocity_goal',
+        #                  Float32MultiArray, queue_size=1)
+        self.mission_state_pub = rospy.Publisher('/turtlebot_control/mission_state',
+                         UInt8, queue_size=1)
+
+        self.MissionStates = MissionStates()
+        self.missionState = self.MissionStates.INIT
 
         self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
         self.waypoint_offset = PoseStamped()
@@ -39,6 +48,9 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.y = quat[1]
         self.waypoint_offset.pose.orientation.z = quat[2]
         self.waypoint_offset.pose.orientation.w = quat[3]
+
+        self.DIST_THRESH = 0.5 # Distance to fiducial tag required for turtlebot to progress to next waypoint
+
 
     def mission_callback(self, msg): # mission callback
         if not self.mission:
@@ -58,6 +70,25 @@ class Supervisor:
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 pass
 
+    def get_robot_state(self):
+        """Queries robot state from map."""
+        try:
+            (self.robot_translation,
+             self.robot_rotation) = self.trans_listener.lookupTransform("/map","/base_footprint",rospy.Time(0))
+            self.has_robot_location = True
+        except (tf.LookupException, tf.ConnectivityException,
+                tf.ExtrapolationException):
+            self.robot_translation = (0, 0, 0)
+            self.robot_rotation = (0, 0, 0, 1)
+            self.has_robot_location = False
+
+        theta = tf.transformations.euler_from_quaternion(self.robot_rotation)[2]
+        return [self.robot_translation[0], self.robot_translation[1] , theta]
+
+    def publish_mission_state(self, missionState):
+        self.mission_state_pub.publish(missionState)
+        self.missionState = missionState
+
     def run(self):
         rate = rospy.Rate(10) # 1 Hz, change this to whatever you like
         while not rospy.is_shutdown():
@@ -65,9 +96,11 @@ class Supervisor:
 
             # STATE MACHINE
             if self.state == 'INIT':
+                self.publish_mission_state(self.MissionStates.INIT)
                 self.state = 'EXPLORE'
 
             if self.state == 'EXPLORE':
+                self.publish_mission_state(self.MissionStates.EXPLORE)
                 if self.click_goal.data:
                    self.goal_pub.publish(self.click_goal) # for manual exploration
 
@@ -77,20 +110,27 @@ class Supervisor:
                     self.state = 'EXPLORE'
 
             if self.state == 'EXECUTE_MISSION':
+                self.publish_mission_state(self.MissionStates.EXECUTE_MISSION)
                 goal_id = self.mission[self.goal_counter] # id of goal tag
                 self.goal.data = pose_to_xyth(self.waypoint_locations[goal_id].pose)
                 self.goal_pub.publish(self.goal)
-                # if close enough to goal
-                    # if facing goal
-                        # increment goal_counter --> will proceed to next goal
-                    # if not facing goal
-                        # turn until facing goal
-                # if not close enough to goal
-                    # if turtlebot is not moving
-                        # tell controller to go directly to goal
-                    # if turtlebot is still moving
-                        # pass
 
+                currentPos = self.get_robot_state() # Extract current position of robot
+                goalPos = pose_to_xyth(self.waypoint_locations[goal_id].pose)
+                distToGoal = np.linalg.norm(np.asarray(goalPos[0:2]) - np.asarray(currentPos[0:2]))
+
+                # Check if we're close enough to goal
+                if distToGoal < self.DIST_THRESH:
+                    self.goal_counter += 1
+                    # If we've completed the mission
+                    if self.goal_counter > (len(self.mission)-1):
+                        # Publish final mission state update
+                        self.publish_mission_state(self.MissionStates.END_OF_MISSION)
+                        self.state = "END_OF_MISSION"
+                        rospy.signal_shutdown('End of Mission. Shutting down supervisor.')
+  
+                rospy.logwarn('Current goal is {}'.format(self.goal_counter))
+                rospy.logwarn('Distance to goal is {}'.format(distToGoal))
 
                 if self.mission and len(self.waypoint_locations) == len(set(self.mission)):
                     self.state = 'EXECUTE_MISSION'
