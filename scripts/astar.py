@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from scipy import signal
+from matplotlib import pyplot as plt
+
+
 
 # Represents a motion planning problem to be solved using A*
 class AStar(object):
@@ -138,8 +142,15 @@ class AStar(object):
         return False
 
     def bufferOccupancy(self,bufferRadius):
-        mapLength = len(self.map_probs)
-        mapArray = np.reshape(self.map_probs, (self.map_height, self.map_width))
+        mapLength = len(self.occupancy.probs)
+        mapArray = np.reshape(self.occupancy.probs, (self.occupancy.height, self.occupancy.width))
+
+        # np.savetxt('./mapArray.txt', mapArray,fmt='%10.5f')   # X is an array
+        # # print mapArray
+        # print np.count_nonzero(mapArray==-1)
+        # print np.count_nonzero(mapArray==0)
+        # print np.count_nonzero(mapArray==100)
+
 
         # build circular buffer mask
         bufferMask = np.zeros([1+2*bufferRadius,1+2*bufferRadius])
@@ -153,7 +164,15 @@ class AStar(object):
         mapArray[convolvedMap > 0] = 100
 
         # update map
-        self.map_probs = np.reshape(mapArray, (length,))
+        self.occupancy.probs = np.reshape(mapArray, (mapLength,))
+
+        # plt.figure()
+        # plt.pcolor(mapArray)
+        # plt.show()
+
+
+        # np.savetxt('./bufferMask.txt', bufferMask,fmt='%10.5f')
+        # np.savetxt('./buffered_mapArray.txt', convolvedMap,fmt='%10.5f')   # X is an array
 
 # A 2D state space grid with a set of rectangular obstacles. The grid is fully deterministic
 class DetOccupancyGrid2D(object):
