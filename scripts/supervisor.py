@@ -5,6 +5,7 @@ from std_msgs.msg import Int32MultiArray, Float32MultiArray, String, UInt8
 from geometry_msgs.msg import PoseStamped
 import tf
 import numpy as np
+from std_msgs.msg import Bool
 
 def pose_to_xyth(pose):
     th = tf.transformations.euler_from_quaternion((pose.orientation.x,
@@ -27,6 +28,8 @@ class Supervisor:
         self.state = 'INIT'
         self.click_goal = Float32MultiArray() # stores goal for manual exploration
         self.goal = Float32MultiArray() # waypoint coordinates in world frame
+
+        self.pub = rospy.Publisher('/success', Bool, queue_size=10)
 
         rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)    # rviz "2D Nav Goal"
         rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
@@ -126,6 +129,9 @@ class Supervisor:
                     if self.goal_counter > (len(self.mission)-1):
                         # Publish final mission state update
                         self.publish_mission_state(self.MissionStates.END_OF_MISSION)
+                        msg = Bool()
+                        msg.data = True
+                        self.pub.publish(msg)
                         self.state = "END_OF_MISSION"
                         rospy.signal_shutdown('End of Mission. Shutting down supervisor.')
   
