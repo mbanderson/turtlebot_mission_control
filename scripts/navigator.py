@@ -41,7 +41,7 @@ class Navigator:
         # Mark completed waypoints off existing plan
         self.prev_nav_sp = None
         self.prev_astar = None
-        self.wp_complete_thresh = 0.25 # m, mark waypoint completed within thresh
+        self.wp_complete_thresh = 0.35 # m, mark waypoint completed within thresh
         self.path_abandon_thresh = 0.5 # m, replan if off path
 
         rospy.Subscriber("map", OccupancyGrid, self.map_callback)
@@ -83,6 +83,7 @@ class Navigator:
         # Still moving toward previous goal
         # Check if existing path still valid
         if self.prev_astar:
+            self.prev_astar.occupancy = self.occupancy
             if self.check_existing_path() and len(self.prev_astar.path) > self.short_path_len:
                 # Old path is valid
 
@@ -169,7 +170,7 @@ class Navigator:
                           self.plan_resolution)
             
             # uncomment to add buffering to obstacles
-            bufferRadius = 3
+            bufferRadius = 4
             astar.bufferOccupancy(bufferRadius)
 
             rospy.loginfo("Computing new navigation plan")
