@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+"""Mid-level A* path planning system to navigate to target waypoint."""
+
 import numpy as np
 from scipy import signal
 import matplotlib.pyplot as plt

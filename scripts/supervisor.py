@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""High-level state machine that manages semi-autonomous/autonomous modes."""
 
 import rospy
 from std_msgs.msg import Int32MultiArray, Float32MultiArray, String, UInt8
@@ -7,7 +8,6 @@ import tf
 import numpy as np
 from std_msgs.msg import Bool
 
-from std_msgs.msg import Bool
 
 def pose_to_xyth(pose):
     th = tf.transformations.euler_from_quaternion((pose.orientation.x,
@@ -20,7 +20,6 @@ class MissionStates:
         INIT, EXPLORE, EXECUTE_MISSION, END_OF_MISSION = range(4)
 
 class Supervisor:  
-
     def __init__(self):
         rospy.init_node('turtlebot_supervisor', anonymous=True)
         self.trans_listener = tf.TransformListener()
@@ -37,17 +36,15 @@ class Supervisor:
         rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
 
         self.goal_pub = rospy.Publisher('turtlebot_controller/nav_goal', Float32MultiArray, queue_size=1)
-        # self.vel_control_pub = rospy.Publisher('/turtlebot_control/velocity_goal',
-        #                  Float32MultiArray, queue_size=1)
         self.mission_state_pub = rospy.Publisher('/turtlebot_control/mission_state',
                          UInt8, queue_size=1)
 
         self.MissionStates = MissionStates()
         self.missionState = self.MissionStates.INIT
 
-        self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
+        self.waypoint_locations = {}  # dictionary that caches the most updated locations of each mission waypoint
         self.waypoint_offset = PoseStamped()
-        self.waypoint_offset.pose.position.z = .4    # waypoint is located 40cm in front of the AprilTag, facing it
+        self.waypoint_offset.pose.position.z = .4  # waypoint is located 40cm in front of the AprilTag, facing it
         quat = tf.transformations.quaternion_from_euler(0., np.pi/2, np.pi/2)
         self.waypoint_offset.pose.orientation.x = quat[0]
         self.waypoint_offset.pose.orientation.y = quat[1]
@@ -57,12 +54,12 @@ class Supervisor:
         self.DIST_THRESH = 0.5 # Distance to fiducial tag required for turtlebot to progress to next waypoint
 
 
-    def mission_callback(self, msg): # mission callback
+    def mission_callback(self, msg): 
+        # mission callback
         if not self.mission:
             self.mission = msg.data
 
     def rviz_goal_callback(self, msg):
-        # rospy.loginfo(msg)
         self.click_goal.data = pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
 
     def update_waypoints(self):
@@ -155,7 +152,6 @@ class Supervisor:
                 else:
                     self.state = 'EXPLORE'
             
-
             rospy.loginfo(self.state)
             rospy.loginfo(len(self.waypoint_locations)-len(set(self.mission)))
 

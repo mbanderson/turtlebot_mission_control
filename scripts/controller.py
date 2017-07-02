@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-
-# FILL ME IN!
+"""Low-level robot driver that commands the TurtleBot to move."""
 
 import rospy
 from gazebo_msgs.msg import ModelStates
@@ -10,7 +9,7 @@ import numpy as np
 from std_msgs.msg import Float32MultiArray, UInt8
 from nav_msgs.msg import Path
 import supervisor as supervisor
-# from std_msgs.msg import uint8
+
 
 
 def wrapToPi(a):
@@ -22,7 +21,7 @@ def wrapToPi(a):
 
 
 class Controller:
-
+    """Defines Controller ROS node for maneuvering the TurtleBot."""
     def __init__(self):
         rospy.init_node('turtlebot_controller', anonymous=True)
         self.trans_listener = tf.TransformListener()
@@ -36,7 +35,6 @@ class Controller:
         self.y_g = 0.0
         self.th_g = 0.0
         self.Mode = 1.0
-        # self.Vel = 0
         self.V = 0
         self.om = 0
 
@@ -48,7 +46,7 @@ class Controller:
 
         self.missionState = self.MissionStates.INIT
 
-        # subscribt to another topic called /turtlebot_control/position_goal
+        # subscribe to another topic called /turtlebot_control/position_goal
         # to grab "self.callback_Position" of type
         rospy.Subscriber('/turtlebot_controller/position_goal',Float32MultiArray, self.callback_Position)
         rospy.Subscriber('/turtlebot_controller/path_goal', Path, self.callback_path_goal)
@@ -69,7 +67,6 @@ class Controller:
     	    data.poses[numPoints - 1].pose.position.y]
 
     def callback_Position(self, data):  # Here we handle the logic of the state machine
-
         self.x_g = data.data[0]  # assuming data from state machine is [x,y,th]
         self.y_g = data.data[1]
         self.th_g = data.data[2]
@@ -79,11 +76,9 @@ class Controller:
         self.om = data.data[1]
 
     def callback_Mode(self, data):  # Here we handle the logic of the state machine
-
         self.Mode = data.data  # assuming data from state machine is [x,y,th]
 
     def get_ctrl_output(self):
-
         # get the location of the robot
         try:
             (translation, rotation) = self.trans_listener.lookupTransform(
@@ -100,21 +95,10 @@ class Controller:
             self.y = translation[1]
             self.th = euler[2]
 
-        # rospy.loginfo(self.x_goal)
-        # rospy.loginfo(self.x_g)
-        # rospy.loginfo(self.y_g)
-        # rospy.loginfo(self.th_g)
-        # print rho
-        # print len()
-
-
         # Define Controller Gains
         k1 = 0.5
         k2 = 0.5
         k3 = 0.5
-
-        # Distance to target point
-        # rho = np.sqrt((self.x - self.x_g)**2 + (self.y - self.y_g)**2) # Original control law
 
         # Distance to final point in current path
         rho = np.linalg.norm(np.asarray(self.x_goal[0:2]) - np.asarray([self.x, self.y]))
@@ -147,13 +131,8 @@ class Controller:
         V = np.sign(V)*min(0.3, np.abs(V))
         om = np.sign(om)*min(1.0, np.abs(om))
 
-        # SHOULD REALLY USE THIS
-        # V = np.sign(V)*min(0.3, np.abs(V))
-        # om = np.sign(om)*min(0.5, np.abs(om))
-
         cmd_x_dot = V # forward velocity
         cmd_theta_dot = om
-        # end of what you need to modify
         cmd = Twist()
         cmd.linear.x = cmd_x_dot
         cmd.angular.z = cmd_theta_dot
@@ -170,5 +149,3 @@ class Controller:
 if __name__ == '__main__':
     ctrl = Controller()
     ctrl.run()
-
-pass

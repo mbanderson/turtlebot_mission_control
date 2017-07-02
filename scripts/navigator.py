@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""High-level planner that manages A* paths and environment obstacles."""
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
@@ -11,7 +12,6 @@ from astar import AStar, DetOccupancyGrid2D, StochOccupancyGrid2D
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 
-import pdb
 
 
 class Navigator:
