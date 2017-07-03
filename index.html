@@ -99,9 +99,32 @@
 	Now for the moment of truth! We deployed our "rover" on the "surface of Mars" and achieved some exciting results:
 	</p>
 	<p>
-	  <iframe width="854" height="480" src="https://www.youtube.com/embed/ghb6eDopW8I" 		  frameborder="0" allowfullscreen></iframe>
+	<center>
+	  <iframe width="700" height="393" src="https://www.youtube.com/embed/UfT0TUR4S9o" frameborder="0" allowfullscreen></iframe>
+	</center>
 	</p>
 
+	<p>So what happened in this test? Let's break it down.</p>
+	<h3>Minute 1</h3>
+	<p>
+	The robot started in its semi-autonomous state and received a mission specification from the course staff. Kyle, our human-in-the-loop rover operator, issued a waypoint command toward the first science objective. The rover planned its own path and drove to the commanded waypoint. One interesting occurrence is that the TurtleBot took a longer path to avoid the corner of the maze. This is likely a result of our buffering system; the TurtleBot perceived the obstacles to be larger than they actually area, and deemed the corner to be impassable.
+	</p>
+
+	<h3>Minute 2</h3>
+	<p>
+	The TurtleBot finished scouting all of the science objectives, switching the system into autonomous mode. The TurtleBot began to autonomously traverse the science objectives in a specified order. All parts of the system performed extremely well!
+	</p>
+
+	<h3>Final Stretch</h3>
+	<p>
+	Of course, we hit our first obstacle as the TurtleBot entered the final stretch. You can see in the moments prior to the collision that the TurtleBot spends a lot of time readjusting itself. Again, the obstacle buffer radius makes the rover believe the gap between obstacles is much smaller than reality. But in the end, we arrived at the final objective and completed the mission. Success!
+	</p>
+
+	<h1>Takeaways</h1>
+	<p>
+	The entire team was extremely happy with our performance. We developed this system in 3 days (with less-than-optimal sleep levels). The test shown was only our second attempt running our software package on the hardware; with a few extra test runs to tune our obstacle buffer radius, we know we could have achieved complete obstacle avoidance. Autonomy achieved!
+	</p>
+	
     </section>
     </div>
 
