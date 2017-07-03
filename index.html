@@ -57,30 +57,47 @@
 	Once each science target has been located, the second phase automatically begins. The rover switches to autonomous mode and must return to each science target in a specified order.
 	</p>
 	
-	<!-- Details -->
-	<h1>Implementation</h1>
+	<!-- Environment Details -->
+	<h1>Rover &amp; Environment</h1>
 	<p>
-		<center>
-			<table cellpadding="0" cellspacing="0" border="0">
-				<tr>
-					<td valign="top">
-						<figure>
-							<img src="" alt="" height="400" width="500">
-							<figcaption>Caption</figcaption>
-						</figure>
-					</td>
-					<td valign="top" width="300">
-						<figure>
-							<img src="" alt="" height="400" width="300">
-							<figcaption>Caption<a href="">Source Text</a>
-				        </figcaption>
-						</figure>
-					</td>
-				</tr>
-			</table>
-		</center>
+	Mars rovers are expensive, so the Robotic Autonomy course staff provided us with TurtleBots. The TurtleBot features an RGBD vision sensor, which we feed into the <a href="http://wiki.ros.org/gmapping">gmapping</a> SLAM package for estimating obstacles.
+	<center>
+		<figure>
+			<img src="../images/turtlebots.jpg" alt="TurtleBots" height="400" width="533">
+			<figcaption><strike>Mars Rovers</strike> Turtlebots. Image courtesy of Ben Hockman</figcaption>
+		</figure>
+	</center>
+	</p>
+	<p>
+	To represent the Martian environment, Ben Hockman built a maze in the Autonomous Systems Lab. Various science objectives are marked on the maze walls with <a href="http://wiki.ros.org/apriltags_ros">AprilTag</a> fiducials.
+	<center>
+		<figure>
+			<img src="../images/marsmaze.PNG" alt="Mars Maze" height="338" width="600">
+			<figcaption>The unknown maze environment. Image courtesy of Ed Schmerling</figcaption>
+		</figure>
+	</center>
 	</p>
 
+	<!-- Code Details -->
+	<h1>Implementation</h1>
+	<p>
+	Our rover software package consists of three major components: a supervisor, a navigator, and a controller.
+	</p> 
+	<p>
+	The supervisor contains a state machine that monitors the robot's status, accepts science waypoints from the human in-the-loop, and handles the transition from semi-autonomous to autonomous mode. The supervisor is the highest level of the autonomous stack and issues commands to the navigator and controller.
+	</p>
+	<p>
+	The navigator processes the obstacle map received from gmapping and plans paths using geometric A*. Because geometric A* assumes the vehicle is a point mass, we add an additional buffer region to all obstacles to prevent collisions. The A* implementation is also designed to replan as infrequently as possible; the navigator will reuse existing paths until another waypoint is issued or new sensor data indicates the current path is no longer viable.
+	</p>
+	<p>
+	The controller is the lowest-level node in the ROS stack. This node receives paths from the navigator and issues velocity/angular velocity commands to the TurtleBot.
+	</p>
+
+	<!-- Results -->
+	<h1>Results</h1>
+	<p>
+	Now for the moment of truth! We deployed our "rover" on the "surface of Mars" and achieved some exciting results:
+	</p>
 	<p>
 	  <iframe width="854" height="480" src="https://www.youtube.com/embed/ghb6eDopW8I" 		  frameborder="0" allowfullscreen></iframe>
 	</p>
@@ -91,7 +108,10 @@
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
       <footer class="inner">
-        <p>GitHub Contributors: <a href="https://github.com/mbanderson">Michael Anderson</a>, <a href="https://github.com/connoranderson">Connor Anderson</a>, <a href="https://github.com/kylejbrown17">Kyle Brown</a>, <a href="https://github.com/hala33">Hala Al-Khalil</a></p>
+        <p>
+		GitHub Contributors: <a href="https://github.com/mbanderson">Michael Anderson</a>, <a href="https://github.com/connoranderson">Connor Anderson</a>, <a href="https://github.com/kylejbrown17">Kyle Brown</a>, <a href="https://github.com/hala33">Hala Al-Khalil</a>
+		<br>Special thanks to Professor Marco Pavone and the Robotic Autonomy course staff.
+		</p>
       </footer>
     </div>
 
