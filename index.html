@@ -4,11 +4,11 @@
   <head>
     <meta charset='utf-8' />
     <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-    <meta name="description" content="Virtual Reality Headtracker" />
+    <meta name="description" content="TurtleBot Mission Control" />
 
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <title></title>
+    <title>TurtleBot Mission Control</title>
   </head>
 
   <body>
@@ -18,24 +18,123 @@
         <header class="inner">
           <a id="forkme_banner" href="https://github.com/mbanderson/turtlebot_mission_control/">View on GitHub</a>
 
-          <h1 id="project_title"></h1>
-          <h2 id="project_tagline"></h2>
-
+          <h1 id="project_title">TurtleBot Mission Control</h1>
+          <h2 id="project_tagline">Michael Anderson, Connor Anderson, Kyle Brown, and Hala Al-Khalil</h2>
         </header>
     </div>
 
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <h1></h1>
+	<!-- Background -->
+        <h1>Why Autonomous Robots?</h1>
+	<p>
+	Think about how frustrating it can be to play your favorite video game with lag. You input some command or move your controller, and you don't see the result of your action for several seconds. But what if your lag was much, much worse? We're not talking about a 2 second delay, but something closer to 14 minutes. Still interested in playing?
+	</p>
+	<p>
+	This is the kind of communication delay that Mars rover operators encounter on a daily basis. They send a command to a vehicle some 200 million kilometers from home at time T=0 minutes. At around T=7 minutes, the rover receives the command and sends an acknowledgement home. At time T=14 minutes, mission control receives the message from the rover and proceeds with their next action.
+	</p>
+	<p><b>Q</b>: So how do you driver a rover safely in these conditions?</p>
+	<p>
+	<b>A</b>: Well, very slowly. There's no one around to repair the rover if we crash into an obstacle on Mars. But we can speed things up by adding some level of autonomy.
+	</p>
+	<p>
+	If we let the rover make some decisions for itself, we can eliminate the wait time associated with the Earth-Mars communication delay. Of course, the software must be robust and this is very much an active area of research. <i>The Atlantic</i> recently featured a nice <a src="https://www.theatlantic.com/technology/archive/2017/06/mars-curiosity-rover/531339/">article</a> on Curiosity's AEGIS system, which allows the rover to better select its own science targets.
+	</p>
 
+	<!-- Mission Overview -->
+	<h1>Mission Overview</h1>
+	<p>
+	Our mission is to design a navigation system for the successor to the Mars 2020 mission. One objective of the Mars 2020 mission is to package soil samples for an eventual return to Earth. Our rover must safely navigate the Martian environment and locate the samples to be returned.
+	</p>
+	<p>
+	We designed and implemented a ROS-based software package that allows a rover to semi-autonomously navigate around an unknown maze. The mission consists of two stages: a semi-autonomous mapping phase, and an autonomous navigation phase.
+	</p>
+	<p>
+	At the start of the mission, the rover receives a list of science targets from mission control. In the first phase, a human driver specifies objective waypoints near each science target. When a waypoint is set, the robot uses an A* path planner to navigate to the waypoint while also estimating the location of visible science targets.
+	</p>
+	<p>
+	Once each science target has been located, the second phase automatically begins. The rover switches to autonomous mode and must return to each science target in a specified order.
+	</p>
+	
+	<!-- Environment Details -->
+	<h1>Rover &amp; Environment</h1>
+	<p>
+	Mars rovers are expensive, so the Robotic Autonomy course staff provided us with TurtleBots. The TurtleBot features an RGBD vision sensor, which we feed into the <a href="http://wiki.ros.org/gmapping">gmapping</a> SLAM package for estimating obstacles.
+	<center>
+		<figure>
+			<img src="../images/turtlebots.jpg" alt="TurtleBots" height="400" width="533">
+			<figcaption><strike>Mars Rovers</strike> Turtlebots. Image courtesy of Ben Hockman</figcaption>
+		</figure>
+	</center>
+	</p>
+	<p>
+	To represent the Martian environment, Ben Hockman built a maze in the Autonomous Systems Lab. Various science objectives are marked on the maze walls with <a href="http://wiki.ros.org/apriltags_ros">AprilTag</a> fiducials.
+	<center>
+		<figure>
+			<img src="../images/marsmaze.PNG" alt="Mars Maze" height="338" width="600">
+			<figcaption>The unknown maze environment. Image courtesy of Ed Schmerling</figcaption>
+		</figure>
+	</center>
+	</p>
+
+	<!-- Code Details -->
+	<h1>Implementation</h1>
+	<p>
+	Our rover software package consists of three major components: a supervisor, a navigator, and a controller.
+	</p> 
+	<p>
+	The supervisor contains a state machine that monitors the robot's status, accepts science waypoints from the human in-the-loop, and handles the transition from semi-autonomous to autonomous mode. The supervisor is the highest level of the autonomous stack and issues commands to the navigator and controller.
+	</p>
+	<p>
+	The navigator processes the obstacle map received from gmapping and plans paths using geometric A*. Because geometric A* assumes the vehicle is a point mass, we add an additional buffer region to all obstacles to prevent collisions. The A* implementation is also designed to replan as infrequently as possible; the navigator will reuse existing paths until another waypoint is issued or new sensor data indicates the current path is no longer viable.
+	</p>
+	<p>
+	The controller is the lowest-level node in the ROS stack. This node receives paths from the navigator and issues velocity/angular velocity commands to the TurtleBot.
+	</p>
+
+	<!-- Results -->
+	<h1>Results</h1>
+	<p>
+	Now for the moment of truth! We deployed our "rover" on the "surface of Mars" and achieved some exciting results:
+	</p>
+	<p>
+	<center>
+	  <iframe width="700" height="393" src="https://www.youtube.com/embed/UfT0TUR4S9o" frameborder="0" allowfullscreen></iframe>
+	</center>
+	</p>
+
+	<p>So what happened in this test? Let's break it down.</p>
+	<h3>Minute 1</h3>
+	<p>
+	The robot started in its semi-autonomous state and received a mission specification from the course staff. Kyle, our human-in-the-loop rover operator, issued a waypoint command toward the first science objective. The rover planned its own path and drove to the commanded waypoint. One interesting occurrence is that the TurtleBot took a longer path to avoid the corner of the maze. This is likely a result of our buffering system; the TurtleBot perceived the obstacles to be larger than they actually area, and deemed the corner to be impassable.
+	</p>
+
+	<h3>Minute 2</h3>
+	<p>
+	The TurtleBot finished scouting all of the science objectives, switching the system into autonomous mode. The TurtleBot began to autonomously traverse the science objectives in a specified order. All parts of the system performed extremely well!
+	</p>
+
+	<h3>Final Stretch</h3>
+	<p>
+	Of course, we hit our first obstacle as the TurtleBot entered the final stretch. You can see in the moments prior to the collision that the TurtleBot spends a lot of time readjusting itself. Again, the obstacle buffer radius makes the rover believe the gap between obstacles is much smaller than reality. But in the end, we arrived at the final objective and completed the mission. Success!
+	</p>
+
+	<h1>Takeaways</h1>
+	<p>
+	The entire team was extremely happy with our performance. We developed this system in 3 days (with less-than-optimal sleep levels). The test shown was only our second attempt running our software package on the hardware; with a few extra test runs to tune our obstacle buffer radius, we know we could have achieved complete obstacle avoidance. Autonomy achieved!
+	</p>
+	
     </section>
     </div>
 
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
       <footer class="inner">
-        <p>GitHub Contributors: <a href="https://github.com/mbanderson"></a></p>
+        <p>
+		GitHub Contributors: <a href="https://github.com/mbanderson">Michael Anderson</a>, <a href="https://github.com/connoranderson">Connor Anderson</a>, <a href="https://github.com/kylejbrown17">Kyle Brown</a>, <a href="https://github.com/hala33">Hala Al-Khalil</a>
+		<br>Special thanks to Professor Marco Pavone and the Robotic Autonomy course staff.
+		</p>
       </footer>
     </div>
 
