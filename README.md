@@ -3,7 +3,8 @@ TurtleBot Mission Control was developed by Michael Anderson, Connor Anderson,
 Kyle Brown, and Hala Al-Khalil as part of Stanford University's Robotic
 Autonomy course. This ROS-based system was created in 3 days and deployed on 
 a TurtleBot robot to semi-autonomously navigate an unknown maze. The mission was 
-a success!
+a success! Additional information (and video results) available at
+[TurtleBot Mission Control](https://mbanderson.github.io/turtlebot_mission_control/).
 
 # Mission Overview
 At a high level, this project is modeled after the challenges of navigating
