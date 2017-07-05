@@ -39,7 +39,7 @@
 	<b>A</b>: Well, very slowly. There's no one around to repair the rover if we crash into an obstacle on Mars. But we can speed things up by adding some level of autonomy.
 	</p>
 	<p>
-	If we let the rover make some decisions for itself, we can eliminate the wait time associated with the Earth-Mars communication delay. Of course, the software must be robust and this is very much an active area of research. <i>The Atlantic</i> recently featured a nice <a src="https://www.theatlantic.com/technology/archive/2017/06/mars-curiosity-rover/531339/">article</a> on Curiosity's AEGIS system, which allows the rover to better select its own science targets.
+	If we let the rover make some decisions for itself, we can eliminate the wait time associated with the Earth-Mars communication delay. Of course, the software must be robust and this is very much an active area of research. <i>The Atlantic</i> recently featured a nice <a href="https://www.theatlantic.com/technology/archive/2017/06/mars-curiosity-rover/531339/">article</a> on Curiosity's AEGIS system, which allows the rover to better select its own science targets.
 	</p>
 
 	<!-- Mission Overview -->
@@ -63,7 +63,7 @@
 	Mars rovers are expensive, so the Robotic Autonomy course staff provided us with TurtleBots. The TurtleBot features an RGBD vision sensor, which we feed into the <a href="http://wiki.ros.org/gmapping">gmapping</a> SLAM package for estimating obstacles.
 	<center>
 		<figure>
-			<img src="../images/turtlebots.jpg" alt="TurtleBots" height="400" width="533">
+			<img src="images/turtlebots.jpg" alt="TurtleBots" height="400" width="533">
 			<figcaption><strike>Mars Rovers</strike> Turtlebots. Image courtesy of Ben Hockman</figcaption>
 		</figure>
 	</center>
@@ -72,7 +72,7 @@
 	To represent the Martian environment, Ben Hockman built a maze in the Autonomous Systems Lab. Various science objectives are marked on the maze walls with <a href="http://wiki.ros.org/apriltags_ros">AprilTag</a> fiducials.
 	<center>
 		<figure>
-			<img src="../images/marsmaze.PNG" alt="Mars Maze" height="338" width="600">
+			<img src="images/marsmaze.PNG" alt="Mars Maze" height="338" width="600">
 			<figcaption>The unknown maze environment. Image courtesy of Ed Schmerling</figcaption>
 		</figure>
 	</center>
@@ -107,7 +107,7 @@
 	<p>So what happened in this test? Let's break it down.</p>
 	<h3>Minute 1</h3>
 	<p>
-	The robot started in its semi-autonomous state and received a mission specification from the course staff. Kyle, our human-in-the-loop rover operator, issued a waypoint command toward the first science objective. The rover planned its own path and drove to the commanded waypoint. One interesting occurrence is that the TurtleBot took a longer path to avoid the corner of the maze. This is likely a result of our buffering system; the TurtleBot perceived the obstacles to be larger than they actually area, and deemed the corner to be impassable.
+	The robot started in its semi-autonomous state and received a mission specification from the course staff. Kyle, our human-in-the-loop rover operator, issued a waypoint command toward the first science objective. The rover planned its own path and drove to the commanded waypoint. One interesting occurrence is that the TurtleBot took a longer path to avoid the corner of the maze. This is likely a result of our buffering system; the TurtleBot perceived the obstacles to be larger than they actually are, and deemed the corner to be impassable.
 	</p>
 
 	<h3>Minute 2</h3>
@@ -122,7 +122,7 @@
 
 	<h1>Takeaways</h1>
 	<p>
-	The entire team was extremely happy with our performance. We developed this system in 3 days (with less-than-optimal sleep levels). The test shown was only our second attempt running our software package on the hardware; with a few extra test runs to tune our obstacle buffer radius, we know we could have achieved complete obstacle avoidance. Autonomy achieved!
+	The entire team was extremely happy with our performance. We developed this system in 3 days (with less-than-optimal sleep levels). The test shown was only our second attempt running our software package on the hardware; with a few extra test runs to tune our controller gains and obstacle buffer radius, we know we could have achieved complete obstacle avoidance. Autonomy achieved!
 	</p>
 	
     </section>
